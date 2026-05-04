@@ -494,14 +494,29 @@ async function fetchGroupData(id) {
             const resp = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
             if (!resp.ok) throw new Error('Status ' + resp.status);
             const html = await resp.text();
-            addLog('Proxy ' + proxyName + ' respondeu com sucesso.', 'success');
+            addLog('Proxy ' + proxyName + ': ' + html.length + ' bytes recebidos.', 'info');
+
+            // Validate that the response is actually a DGP page
+            if (html.length < 1000 || !html.includes('control-label')) {
+                addLog('Proxy ' + proxyName + ': resposta não contém dados DGP (página inválida ou vazia). Tentando próximo...', 'warning');
+                throw new Error('Resposta inválida do proxy (sem conteúdo DGP)');
+            }
 
             const parser = new DOMParser();
             const doc    = parser.parseFromString(html, 'text/html');
+
+            // Double-check: verify we can find at least the 'Situação' label
+            const situacao = getFieldValue(doc, 'Situação do grupo:');
+            if (situacao === 'N/A') {
+                addLog('Proxy ' + proxyName + ': HTML recebido mas parsing falhou (labels não encontrados). Tentando próximo...', 'warning');
+                throw new Error('Parsing falhou: labels não encontrados no HTML');
+            }
+
+            addLog('Proxy ' + proxyName + ' respondeu com sucesso.', 'success');
             const leaders = getLideresArray(doc);
 
             return {
-                situacao:          getFieldValue(doc, 'Situação do grupo:'),
+                situacao:          situacao,
                 anoFormacao:       getFieldValue(doc, 'Ano de formação:'),
                 dataSituacao:      getFieldValue(doc, 'Data da Situação:'),
                 ultimoEnvio:       getFieldValue(doc, 'Data do último envio:'),
