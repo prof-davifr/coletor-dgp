@@ -531,9 +531,7 @@ async function fetchGroupData(id) {
 
 // ---- DGP Parsers ----
 function getUnidadeValue(doc) {
-    let val = getFieldValue(doc, 'Unidade:');
-    if (val.startsWith('IFBA - Campus ')) val = val.replace('IFBA - Campus ', '');
-    return val;
+    return getFieldValue(doc, 'Unidade:');
 }
 
 function getResearcherNames(doc) {
@@ -550,13 +548,24 @@ function getResearcherNames(doc) {
 
 function getFieldValue(doc, labelText) {
     const labels = Array.from(doc.querySelectorAll('.control-label'));
-    const label  = labels.find(l => l.textContent.trim().includes(labelText));
-    return label ? label.nextElementSibling.textContent.trim().replace(/\s+/g, ' ') : 'N/A';
+    const target = labelText.toLowerCase().trim();
+    const label  = labels.find(l => l.textContent.toLowerCase().includes(target));
+    if (label && label.nextElementSibling) {
+        return label.nextElementSibling.textContent.trim().replace(/\s+/g, ' ');
+    }
+    // Fallback: search for label in the whole document if not found in .control-label
+    const allText = Array.from(doc.querySelectorAll('label, th, td, b, span'));
+    const fallback = allText.find(l => l.textContent.toLowerCase().includes(target));
+    if (fallback && fallback.nextElementSibling) {
+        return fallback.nextElementSibling.textContent.trim().replace(/\s+/g, ' ');
+    }
+    return 'N/A';
 }
 
 function getLideresArray(doc) {
-    const labels = Array.from(doc.querySelectorAll('.control-label'));
-    const label  = labels.find(l => l.textContent.trim().includes('Líder(es) do grupo:'));
+    const labels = Array.from(doc.querySelectorAll('.control-label, label, th'));
+    const target = 'líder(es) do grupo:';
+    const label  = labels.find(l => l.textContent.toLowerCase().includes(target));
     if (!label) return [];
     const controls = label.nextElementSibling.cloneNode(true);
     controls.querySelectorAll('button, script, div.ui-tooltip').forEach(e => e.remove());
@@ -590,7 +599,8 @@ function decodeCloudflareEmail(hex) {
 function getRHCounts(doc) {
     const result = { pesquisadores: 0, estudantes: 0, tecnicos: 0 };
     const legends = Array.from(doc.querySelectorAll('legend'));
-    const legend  = legends.find(l => l.textContent.includes('Indicadores de recursos humanos'));
+    const target = 'indicadores de recursos humanos';
+    const legend  = legends.find(l => l.textContent.toLowerCase().includes(target));
     if (!legend) return result;
     const table = legend.parentElement.querySelector('table');
     if (!table) return result;
@@ -607,7 +617,8 @@ function getRHCounts(doc) {
 
 function getPartnershipCount(doc, legendText) {
     const legends = Array.from(doc.querySelectorAll('legend'));
-    const legend  = legends.find(l => l.textContent.includes(legendText));
+    const target = legendText.toLowerCase();
+    const legend  = legends.find(l => l.textContent.toLowerCase().includes(target));
     if (!legend) return 0;
     const table = legend.parentElement.querySelector('table');
     if (!table) return 0;
