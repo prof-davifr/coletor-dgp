@@ -539,10 +539,19 @@
         });
 
         const proxyList = [
-            'https://api.allorigins.win/raw?url=',    // Most reliable (tested: 200)
-            'https://thingproxy.freeboard.io/fetch/',   // Generally reliable
-            'https://corsproxy.io/?'                   // Least reliable (tested: 403)
+            'https://api.allorigins.win/raw?url=',    
+            'https://thingproxy.freeboard.io/fetch/',   
+            'https://api.codetabs.com/v1/proxy?url=',
+            'https://corsproxy.io/?'                   
         ];
+        
+        // Check for file:// protocol
+        if (window.location.protocol === 'file:') {
+            window.addEventListener('load', () => {
+                addLog('⚠️ Você está executando via file://. Isso pode causar bloqueios de CORS (Origin null).', 'warning');
+                addLog('💡 Recomendação: Use um servidor local (ex: Live Server do VSCode ou python -m http.server).', 'info');
+            });
+        }
         let customProxy = '';
         const delayMsInput = null; // removed
 
@@ -773,7 +782,11 @@
                     };
                 } catch (e) {
                     lastError = e;
-                    addLog(`Proxy ${proxyName} falhou: ${e.message}`, 'error');
+                    if (e.name === 'TypeError' && e.message.includes('fetch')) {
+                        addLog(`Proxy ${proxyName} falhou por CORS ou Rede. Verifique sua conexão ou use um servidor local.`, 'error');
+                    } else {
+                        addLog(`Proxy ${proxyName} falhou: ${e.message}`, 'error');
+                    }
                     // try next proxy
                 }
             }
